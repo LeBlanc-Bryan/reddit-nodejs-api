@@ -22,8 +22,9 @@ var redditAPI = reddit(connection);
 
 // redditAPI.createPost({
 //                     userId: 1,
-//                     title: 'Huzzah!',
-//                     url: 'https://reddit.com'
+//                     title: 'Which subreddit is this?',
+//                     url: 'https://reddit.com',
+//                     subredditId: 1,
 //                 }, function(err, post) {
 //                   if(err) {
 //                     console.log('Your post was not created ' + err);
@@ -31,22 +32,43 @@ var redditAPI = reddit(connection);
 //                   else{
 //                     console.log(post);
 //                   }
-//                 })
+//                 });
 
-// redditAPI.getAllPostsForUser(1, function(err, response){
+redditAPI.getAllPostsForUser(1, function(err, response){
+  if (err) {
+    console.log(err);
+  }
+  else{
+    console.log(response);
+  }
+})
+
+// redditAPI.getSinglePost(1, function(err, response) {
+//   if(err) {
+//     console.log(err);
+//   }
+//   else {
+//     console.log(response);
+//   }
+// })
+
+// redditAPI.createSubreddit( {
+//   name: 'funny'
+// }, function(err, response) {
 //   if (err) {
 //     console.log(err);
 //   }
 //   else{
 //     console.log(response);
 //   }
-// })
+// }
+// )
 
-redditAPI.getSinglePost(1, function(err, response) {
-  if(err) {
-    console.log(err);
-  }
-  else {
-    console.log(response);
-  }
-})
+// redditAPI.getAllSubreddits(function(err, response) {
+//   if(err) {
+//     console.log(err);
+//   }
+//   else {
+//     console.log(response);
+//   }
+// })

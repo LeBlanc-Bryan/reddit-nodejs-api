@@ -60,7 +60,7 @@ module.exports = function RedditAPI(conn) {
     },
     createPost: function(post, callback) {
       conn.query(
-        'INSERT INTO posts (userId, title, url, createdAt) VALUES (?, ?, ?, ?)', [post.userId, post.title, post.url, new Date()],
+        'INSERT INTO posts (userId, title, url, createdAt, subredditId) VALUES (?, ?, ?, ?, ?)', [post.userId, post.title, post.url, new Date(), post.subredditId],
         function(err, result) {
           if (err) {
             callback(err);
@@ -71,7 +71,7 @@ module.exports = function RedditAPI(conn) {
             the post and send it to the caller!
             */
             conn.query(
-              'SELECT id,title,url,userId, createdAt, updatedAt FROM posts WHERE id = ?', [result.insertId],
+              'SELECT id, title, url, userId, createdAt, updatedAt, subredditId FROM posts WHERE id = ?', [result.insertId],
               function(err, result) {
                 if (err) {
                   callback(err);
@@ -95,10 +95,12 @@ module.exports = function RedditAPI(conn) {
       var offset = (options.page || 0) * limit;
 
       conn.query(`
-        SELECT posts.id, posts.title, posts.url, posts.createdAt, posts.updatedAt, users.id as userId, users.username, users.createdAt as usercreatedAt, users.updatedAt as userupdatedAt
+        SELECT posts.id, posts.title, posts.url, posts.createdAt, posts.updatedAt, users.id as userId, users.username, users.createdAt as usercreatedAt, users.updatedAt as userupdatedAt, subreddits.id, subreddits.name as subredditName, subreddits.description, subreddits.createdAt as subredditcreatedAt, subreddits.updatedAt as subredditupdatedAt
         FROM posts
         JOIN users
         ON posts.userId=users.id
+        JOIN subreddits 
+        ON posts.subredditId = subreddits.id
         ORDER BY posts.createdAt DESC
         LIMIT ? OFFSET ?`, [limit, offset],
         function(err, results) {
@@ -118,6 +120,13 @@ module.exports = function RedditAPI(conn) {
                   username: res.username,
                   createdAt: res.usercreatedAt,
                   updatedAt: res.userupdatedAt,
+                },
+                Subreddit: {
+                  id: res.subredditId,
+                  name: res.subredditName,
+                  description: res.description,
+                  createdAt: res.subredditcreatedAt,
+                  updatedAt: res.subredditcreatedAt,
                 }
               }
             }))
@@ -136,10 +145,12 @@ module.exports = function RedditAPI(conn) {
       var user = userId;
 
       conn.query(`
-        SELECT posts.id, posts.title, posts.url, posts.createdAt, posts.updatedAt, users.id as userId, users.username, users.createdAt as usercreatedAt, users.updatedAt as userupdatedAt
+        SELECT posts.id, posts.title, posts.url, posts.createdAt, posts.updatedAt, users.id as userId, users.username, users.createdAt as usercreatedAt, users.updatedAt as userupdatedAt, subreddits.id, subreddits.name, subreddits.description, subreddits.createdAt as subredditcreatedAt, subreddits.updatedAt as subredditupdatedAt
         FROM posts
         JOIN users
         ON posts.userId=users.id
+        JOIN subreddits 
+        ON posts.subredditId = subreddits.id
         WHERE posts.userId = ?
         ORDER BY posts.createdAt DESC
         LIMIT ? OFFSET ?`, [user, limit, offset],
@@ -162,6 +173,13 @@ module.exports = function RedditAPI(conn) {
                     username: res.username,
                     createdAt: res.usercreatedAt,
                     updatedAt: res.userupdatedAt,
+                  },
+                  Subreddit: {
+                    id: res.subredditId,
+                    name: res.subredditName,
+                    description: res.description,
+                    createdAt: res.subredditcreatedAt,
+                    updatedAt: res.subredditcreatedAt,
                   }
                 }
               }))
@@ -170,25 +188,25 @@ module.exports = function RedditAPI(conn) {
       );
     },
     getSinglePost: function(postId, callback) {
-  // In case we are called without an options parameter, shift all the parameters manually
-  
-  var post = postId;
+      // In case we are called without an options parameter, shift all the parameters manually
 
-  conn.query(`
+      var post = postId;
+
+      conn.query(`
         SELECT posts.id, posts.title, posts.url, posts.createdAt, posts.updatedAt, users.id as userId, users.username, users.createdAt as usercreatedAt, users.updatedAt as userupdatedAt
         FROM posts
         JOIN users
         ON posts.userId=users.id
         WHERE posts.id = ?
         `, [post],
-    function(err, results) {
-      if (err) {
-        callback(err);
-      }
-      else {
-        callback(null,
+        function(err, results) {
+          if (err) {
+            callback(err);
+          }
+          else {
+            callback(null,
 
-          results.map(function(res, index, array) {
+              results.map(function(res, index, array) {
                 return {
                   id: res.id,
                   title: res.title,
@@ -203,12 +221,62 @@ module.exports = function RedditAPI(conn) {
                   }
                 }
               })
-          .pop()
-        );
+              .pop()
+            );
+          }
+        }
+      );
+    },
+    createSubreddit: function(subreddit, callback) {
+      conn.query(
+        'INSERT INTO subreddits(name, description, createdAt) VALUES (?, ?, ?)', [subreddit.name, subreddit.description, new Date()],
+        function(err, result) {
+          if (err) {
+            callback(err);
+          }
+          else {
+            /*
+            Post inserted successfully. Let's use the result.insertId to retrieve
+            the post and send it to the caller!
+            */
+            conn.query(
+              'SELECT id, name, description, createdAt, updatedAt FROM subreddits WHERE id = ?', [result.insertId],
+              function(err, result) {
+                if (err) {
+                  callback(err);
+                }
+                else {
+                  callback(null, result[0]);
+                }
+              }
+            );
+          }
+        }
+      );
+    },
+    getAllSubreddits: function(options, callback) {
+      // In case we are called without an options parameter, shift all the parameters manually
+      if (!callback) {
+        callback = options;
+        options = {};
       }
-    }
-  );
-}
+      var limit = options.numPerPage || 25; // if options.numPerPage is "falsy" then use 25
+      var offset = (options.page || 0) * limit;
 
+      conn.query(`
+        SELECT * 
+        FROM subreddits
+        ORDER BY subreddits.createdAt DESC
+        LIMIT ? OFFSET ?`, [limit, offset],
+        function(err, results) {
+          if (err) {
+            callback(err);
+          }
+          else {
+            callback(null, results)
+            return results;
+          }
+        })
+    }
   }
 }
