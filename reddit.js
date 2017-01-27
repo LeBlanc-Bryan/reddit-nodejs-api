@@ -151,16 +151,20 @@ module.exports = function RedditAPI(conn) {
             callback(null,
 
               results.map(function(res, index, array) {
-                  return {
-                    title: res.title,
-                    url: res.url,
-                    id: res.id,
-                    created: res.createdAt,
-                    updated: res.updatedAt
+                return {
+                  id: res.id,
+                  title: res.title,
+                  url: res.url,
+                  createdAt: res.createdAt,
+                  updatedAt: res.updatedAt,
+                  User: {
+                    id: res.userId,
+                    username: res.username,
+                    createdAt: res.usercreatedAt,
+                    updatedAt: res.userupdatedAt,
                   }
                 }
-              )
-            )
+              }))
           }
         }
       );
