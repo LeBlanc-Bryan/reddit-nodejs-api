@@ -4,7 +4,7 @@ var HASH_ROUNDS = 10;
 module.exports = function RedditAPI(conn) {
   return {
     createUser: function(user, callback) {
-      
+
       // first we have to hash the password...
       bcrypt.hash(user.password, HASH_ROUNDS, function(err, hashedPassword) {
         if (err) {
@@ -48,7 +48,7 @@ module.exports = function RedditAPI(conn) {
                       3b. If the insert succeeds, re-fetch the user from the DB
                       4. If the re-fetch succeeds, return the object to the caller
                       */
-                        callback(null, result[0]);
+                      callback(null, result[0]);
                     }
                   }
                 );
@@ -93,20 +93,35 @@ module.exports = function RedditAPI(conn) {
       }
       var limit = options.numPerPage || 25; // if options.numPerPage is "falsy" then use 25
       var offset = (options.page || 0) * limit;
-      
+
       conn.query(`
-        SELECT id, title, url, userId, createdAt, updatedAt
+        SELECT posts.id, posts.title, posts.url, posts.createdAt, posts.updatedAt, users.id as userId, users.username, users.createdAt as usercreatedAt, users.updatedAt as userupdatedAt
         FROM posts
-        ORDER BY createdAt DESC
-        LIMIT ? OFFSET ?`
-        , [limit, offset],
+        JOIN users
+        ON posts.userId=users.id
+        ORDER BY posts.createdAt DESC
+        LIMIT ? OFFSET ?`, [limit, offset],
         function(err, results) {
           if (err) {
             callback(err);
           }
           else {
-            callback(null, results);
-          }
+            callback(null, results.map(function(res) {
+              return {
+                id: res.id,
+                title: res.title,
+                url: res.url,
+                createdAt: res.createdAt,
+                updatedAt: res.updatedAt,
+                User: {
+                  id: res.userId,
+                  username: res.username,
+                  createdAt: res.usercreatedAt,
+                  updatedAt: res.userupdatedAt,
+                }
+              }
+            })
+          )}
         }
       );
     }
