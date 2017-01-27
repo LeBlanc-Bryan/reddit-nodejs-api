@@ -120,8 +120,48 @@ module.exports = function RedditAPI(conn) {
                   updatedAt: res.userupdatedAt,
                 }
               }
-            })
-          )}
+            }))
+          }
+        }
+      );
+    },
+    getAllPostsForUser: function(userId, options, callback) {
+      // In case we are called without an options parameter, shift all the parameters manually
+      if (!callback) {
+        callback = options;
+        options = {};
+      }
+      var limit = options.numPerPage || 25; // if options.numPerPage is "falsy" then use 25
+      var offset = (options.page || 0) * limit;
+      var user = userId;
+
+      conn.query(`
+        SELECT posts.id, posts.title, posts.url, posts.createdAt, posts.updatedAt, users.id as userId, users.username, users.createdAt as usercreatedAt, users.updatedAt as userupdatedAt
+        FROM posts
+        JOIN users
+        ON posts.userId=users.id
+        WHERE posts.userId = ?
+        ORDER BY posts.createdAt DESC
+        LIMIT ? OFFSET ?`, [user, limit, offset],
+        function(err, results) {
+          if (err) {
+            callback(err);
+          }
+          else {
+            callback(null,
+
+              results.map(function(res, index, array) {
+                  return {
+                    title: res.title,
+                    url: res.url,
+                    id: res.id,
+                    created: res.createdAt,
+                    updated: res.updatedAt
+                  }
+                }
+              )
+            )
+          }
         }
       );
     }
