@@ -10,15 +10,14 @@ var connection = mysql.createConnection({
 var reddit = require('./reddit');
 var redditAPI = reddit(connection);
 
-// redditAPI.getAllPostsForUser(1, function(err, res) {
-//   if (err) {
-//     console.log(err);
-//   }
-//   else {
-//     console.log(res);
-//     return res;
-//   }
-// });
+redditAPI.getAllPosts(1, function(err, res) {
+  if (err) {
+    console.log(err);
+  }
+  else {
+    console.log(res);
+  }
+});
 
 // redditAPI.createPost({
 //                     userId: 1,
@@ -34,14 +33,14 @@ var redditAPI = reddit(connection);
 //                   }
 //                 });
 
-redditAPI.getAllPostsForUser(1, function(err, response){
-  if (err) {
-    console.log(err);
-  }
-  else{
-    console.log(response);
-  }
-})
+// redditAPI.getAllPostsForUser(1, function(err, response){
+//   if (err) {
+//     console.log(err);
+//   }
+//   else{
+//     console.log(response);
+//   }
+// })
 
 // redditAPI.getSinglePost(1, function(err, response) {
 //   if(err) {
@@ -72,3 +71,19 @@ redditAPI.getAllPostsForUser(1, function(err, response){
 //     console.log(response);
 //   }
 // })
+
+
+// redditAPI.createPost(
+//   {
+//       title: 'what up dog?',
+//       url: 'https://www.reddit.com',
+//       userId: 1,
+//       subredditId: 1
+//     }, function(err, response) {
+//       if (err) {
+//         console.log(err);
+//       }
+//       else {
+//         console.log(response);
+//       }
+//     });

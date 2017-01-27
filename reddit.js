@@ -95,7 +95,7 @@ module.exports = function RedditAPI(conn) {
       var offset = (options.page || 0) * limit;
 
       conn.query(`
-        SELECT posts.id, posts.title, posts.url, posts.createdAt, posts.updatedAt, users.id as userId, users.username, users.createdAt as usercreatedAt, users.updatedAt as userupdatedAt, subreddits.id, subreddits.name as subredditName, subreddits.description, subreddits.createdAt as subredditcreatedAt, subreddits.updatedAt as subredditupdatedAt
+        SELECT posts.id, posts.title, posts.url, posts.createdAt, posts.updatedAt, users.id as userId, users.username, users.createdAt as usercreatedAt, users.updatedAt as userupdatedAt, subreddits.id as subredditId, subreddits.name as subredditName, subreddits.description, subreddits.createdAt as subredditcreatedAt, subreddits.updatedAt as subredditupdatedAt
         FROM posts
         JOIN users
         ON posts.userId=users.id
@@ -110,25 +110,27 @@ module.exports = function RedditAPI(conn) {
           else {
             callback(null, results.map(function(res) {
               return {
-                id: res.id,
-                title: res.title,
-                url: res.url,
-                createdAt: res.createdAt,
-                updatedAt: res.updatedAt,
-                User: {
-                  id: res.userId,
-                  username: res.username,
-                  createdAt: res.usercreatedAt,
-                  updatedAt: res.userupdatedAt,
-                },
-                Subreddit: {
-                  id: res.subredditId,
-                  name: res.subredditName,
-                  description: res.description,
-                  createdAt: res.subredditcreatedAt,
-                  updatedAt: res.subredditcreatedAt,
+                  User: {
+                    id: res.userId,
+                    username: res.username,
+                    createdAt: res.usercreatedAt,
+                    updatedAt: res.userupdatedAt,
+                  },
+                  Subreddit: {
+                    id: res.subredditId,
+                    name: res.subredditName,
+                    description: res.description,
+                    createdAt: res.subredditcreatedAt,
+                    updatedAt: res.subredditcreatedAt,
+                  },
+                  Post: {
+                    id: res.id,
+                    title: res.title,
+                    url: res.url,
+                    createdAt: res.createdAt,
+                    updatedAt: res.updatedAt,
+                  }
                 }
-              }
             }))
           }
         }
@@ -145,7 +147,7 @@ module.exports = function RedditAPI(conn) {
       var user = userId;
 
       conn.query(`
-        SELECT posts.id, posts.title, posts.url, posts.createdAt, posts.updatedAt, users.id as userId, users.username, users.createdAt as usercreatedAt, users.updatedAt as userupdatedAt, subreddits.id, subreddits.name, subreddits.description, subreddits.createdAt as subredditcreatedAt, subreddits.updatedAt as subredditupdatedAt
+        SELECT posts.id, posts.title, posts.url, posts.createdAt, posts.updatedAt, users.id as userId, users.username, users.createdAt as usercreatedAt, users.updatedAt as userupdatedAt, subreddits.id as subredditId, subreddits.name, subreddits.description, subreddits.createdAt as subredditcreatedAt, subreddits.updatedAt as subredditupdatedAt
         FROM posts
         JOIN users
         ON posts.userId=users.id
@@ -162,12 +164,8 @@ module.exports = function RedditAPI(conn) {
             callback(null,
 
               results.map(function(res, index, array) {
+
                 return {
-                  id: res.id,
-                  title: res.title,
-                  url: res.url,
-                  createdAt: res.createdAt,
-                  updatedAt: res.updatedAt,
                   User: {
                     id: res.userId,
                     username: res.username,
@@ -180,6 +178,13 @@ module.exports = function RedditAPI(conn) {
                     description: res.description,
                     createdAt: res.subredditcreatedAt,
                     updatedAt: res.subredditcreatedAt,
+                  },
+                  Post: {
+                    id: res.id,
+                    title: res.title,
+                    url: res.url,
+                    createdAt: res.createdAt,
+                    updatedAt: res.updatedAt,
                   }
                 }
               }))
