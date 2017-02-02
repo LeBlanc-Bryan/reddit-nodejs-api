@@ -143,7 +143,7 @@ app.get('/:sort', function(request, response) {
 // /subreddits
 
 app.get('/r/:subreddit', function(request, response) {
-  redditAPI.getAllPosts(request.params.subreddit, {
+  redditAPI.getAllPostsForSubreddit('top', request.params.subreddit, {
     numPerPage: 25,
     page: 0,
   }, function(err, posts) {
