@@ -85,7 +85,7 @@ module.exports = function RedditAPI(conn) {
         }
       );
     },
-    getAllPosts: function(options, callback) {
+    getAllPosts: function(sortingMethod, options, callback) {
       // In case we are called without an options parameter, shift all the parameters manually
       if (!callback) {
         callback = options;
@@ -93,15 +93,29 @@ module.exports = function RedditAPI(conn) {
       }
       var limit = options.numPerPage || 25; // if options.numPerPage is "falsy" then use 25
       var offset = (options.page || 0) * limit;
-
+      var sortBy ='posts.createdAt DESC';
+     
+      if(sortingMethod === 'top') {
+        sortBy = 'voteScore DESC';
+      }
+      else if(sortingMethod === 'hot') {
+        sortBy = 'voteScore DESC, posts.createdAt DESC';
+      }
+      else if(sortingMethod === 'controversial') {
+        sortBy = 'voteCount DESC, voteScore ASC';
+      }
+      else if(sortingMethod )
       conn.query(`
-        SELECT posts.id, posts.title, posts.url, posts.createdAt, posts.updatedAt, users.id as userId, users.username, users.createdAt as usercreatedAt, users.updatedAt as userupdatedAt, subreddits.id as subredditId, subreddits.name as subredditName, subreddits.description, subreddits.createdAt as subredditcreatedAt, subreddits.updatedAt as subredditupdatedAt
+        SELECT SUM(votes.vote) AS voteScore, COUNT(votes.vote) AS voteCount, posts.id, posts.title, posts.url, posts.createdAt, posts.updatedAt, users.id as userId, users.username, users.createdAt as usercreatedAt, users.updatedAt as userupdatedAt, subreddits.id as subredditId, subreddits.name as subredditName, subreddits.description, subreddits.createdAt as subredditcreatedAt, subreddits.updatedAt as subredditupdatedAt
         FROM posts
-        JOIN users
+        LEFT JOIN votes
+        ON posts.id = votes.postId
+        LEFT JOIN users
         ON posts.userId=users.id
-        JOIN subreddits 
+        LEFT JOIN subreddits 
         ON posts.subredditId = subreddits.id
-        ORDER BY posts.createdAt DESC
+        GROUP BY posts.id
+        ORDER BY ${sortBy}
         LIMIT ? OFFSET ?`, [limit, offset],
         function(err, results) {
           if (err) {
@@ -110,27 +124,29 @@ module.exports = function RedditAPI(conn) {
           else {
             callback(null, results.map(function(res) {
               return {
-                  User: {
-                    id: res.userId,
-                    username: res.username,
-                    createdAt: res.usercreatedAt,
-                    updatedAt: res.userupdatedAt,
-                  },
-                  Subreddit: {
-                    id: res.subredditId,
-                    name: res.subredditName,
-                    description: res.description,
-                    createdAt: res.subredditcreatedAt,
-                    updatedAt: res.subredditcreatedAt,
-                  },
-                  Post: {
-                    id: res.id,
-                    title: res.title,
-                    url: res.url,
-                    createdAt: res.createdAt,
-                    updatedAt: res.updatedAt,
-                  }
+                User: {
+                  id: res.userId,
+                  username: res.username,
+                  createdAt: res.usercreatedAt,
+                  updatedAt: res.userupdatedAt,
+                },
+                Subreddit: {
+                  id: res.subredditId,
+                  name: res.subredditName,
+                  description: res.description,
+                  createdAt: res.subredditcreatedAt,
+                  updatedAt: res.subredditcreatedAt,
+                },
+                Post: {
+                  id: res.id,
+                  title: res.title,
+                  url: res.url,
+                  createdAt: res.createdAt,
+                  updatedAt: res.updatedAt,
+                  voteScore: res.voteScore,
+                  voteCount: res.voteCount,
                 }
+              }
             }))
           }
         }
@@ -147,8 +163,10 @@ module.exports = function RedditAPI(conn) {
       var user = userId;
 
       conn.query(`
-        SELECT posts.id, posts.title, posts.url, posts.createdAt, posts.updatedAt, users.id as userId, users.username, users.createdAt as usercreatedAt, users.updatedAt as userupdatedAt, subreddits.id as subredditId, subreddits.name, subreddits.description, subreddits.createdAt as subredditcreatedAt, subreddits.updatedAt as subredditupdatedAt
+        SELECT SUM(votes.vote) AS voteScore, COUNT(votes.vote) AS voteCount, posts.id, posts.title, posts.url, posts.createdAt, posts.updatedAt, users.id as userId, users.username, users.createdAt as usercreatedAt, users.updatedAt as userupdatedAt, subreddits.id as subredditId, subreddits.name as subredditName, subreddits.description, subreddits.createdAt as subredditcreatedAt, subreddits.updatedAt as subredditupdatedAt
         FROM posts
+        JOIN votes
+        ON votes.postId = posts.id 
         JOIN users
         ON posts.userId=users.id
         JOIN subreddits 
@@ -185,6 +203,8 @@ module.exports = function RedditAPI(conn) {
                     url: res.url,
                     createdAt: res.createdAt,
                     updatedAt: res.updatedAt,
+                    voteScore: res.voteScore,
+                    voteCount: res.voteCount,
                   }
                 }
               }))
@@ -282,6 +302,32 @@ module.exports = function RedditAPI(conn) {
             return results;
           }
         })
+    },
+    createOrUpdateVote: function(vote, callback) {
+      var postId = vote.postId;
+      var userId = vote.userId;
+      var voteDir = vote.voteDir;
+      if (voteDir !== 0 && voteDir !== 1 && voteDir !== -1) {
+        console.log("Vote did not equal 1, 0 or -1.");
+      }
+      else {
+        conn.query(`
+    INSERT INTO votes 
+    SET postId=?, voterId=?, vote=?, createdAt = NOW() 
+    ON DUPLICATE 
+    KEY UPDATE vote=?`, [postId, userId, voteDir, voteDir],
+
+          function(err, results) {
+            if (err) {
+              callback(err);
+            }
+            else {
+              callback(null, results);
+              return results;
+            }
+          })
+      }
     }
+
   }
 }

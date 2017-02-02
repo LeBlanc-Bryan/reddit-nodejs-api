@@ -10,15 +10,15 @@ var connection = mysql.createConnection({
 var reddit = require('./reddit');
 var redditAPI = reddit(connection);
 
-redditAPI.getAllPosts(1, function(err, res) {
-  if (err) {
-    console.log(err);
-  }
-  else {
-    console.log(res);
-  }
-});
-
+// redditAPI.getAllPosts(1, function(err, res) {
+//   if (err) {
+//     console.log(err);
+//   }
+//   else {
+//     console.log(res);
+//   }
+// });
+///
 // redditAPI.createPost({
 //                     userId: 1,
 //                     title: 'Which subreddit is this?',
@@ -32,7 +32,7 @@ redditAPI.getAllPosts(1, function(err, res) {
 //                     console.log(post);
 //                   }
 //                 });
-
+////
 // redditAPI.getAllPostsForUser(1, function(err, response){
 //   if (err) {
 //     console.log(err);
@@ -41,7 +41,7 @@ redditAPI.getAllPosts(1, function(err, res) {
 //     console.log(response);
 //   }
 // })
-
+////
 // redditAPI.getSinglePost(1, function(err, response) {
 //   if(err) {
 //     console.log(err);
@@ -50,9 +50,10 @@ redditAPI.getAllPosts(1, function(err, res) {
 //     console.log(response);
 //   }
 // })
-
+////
 // redditAPI.createSubreddit( {
-//   name: 'funny'
+//   name: '',
+//   description: '',
 // }, function(err, response) {
 //   if (err) {
 //     console.log(err);
@@ -62,7 +63,7 @@ redditAPI.getAllPosts(1, function(err, res) {
 //   }
 // }
 // )
-
+////
 // redditAPI.getAllSubreddits(function(err, response) {
 //   if(err) {
 //     console.log(err);
@@ -71,19 +72,34 @@ redditAPI.getAllPosts(1, function(err, res) {
 //     console.log(response);
 //   }
 // })
+////
+// var vote = { postId: 2,
+//             userId: 1,
+//             voteDir: 1};
+
+// redditAPI.createOrUpdateVote({
+//   postId: 3,
+//   userId: 4,
+//   voteDir: -1,
+// }, function(err, response) {
+//   if (err) {
+//     console.log(err); 
+//   }
+//     else {
+//       console.log(response);
+//     }
+//   }
+// );
 
 
-// redditAPI.createPost(
-//   {
-//       title: 'what up dog?',
-//       url: 'https://www.reddit.com',
-//       userId: 1,
-//       subredditId: 1
-//     }, function(err, response) {
-//       if (err) {
-//         console.log(err);
-//       }
-//       else {
-//         console.log(response);
-//       }
-//     });
+// redditAPI.createUser({
+//   username: 'billcurry17',
+//   password: 'ghostbusters',
+// }, function(err, response) {
+//   if (err) {
+//     console.log(err);
+//   }
+//   else {
+//     console.log(response);
+//   }
+// })

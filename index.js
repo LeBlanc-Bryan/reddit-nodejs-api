@@ -1,15 +1,16 @@
 var mysql = require('mysql');
-//
+
 var connection = mysql.createConnection({
   host: 'localhost',
   user: 'leblancbryan',
   password: '',
-  database: 'reddit'
+  database: 'reddit',
+  multipleStatements: true
 });
-//
+
 var reddit = require('./reddit');
 var redditAPI = reddit(connection);
-//
+
 var express = require('express');
 var app = express();
 
@@ -19,89 +20,140 @@ var server = app.listen(process.env.PORT, process.env.IP, function() {
   console.log('Example app listening at http://%s:%s', host, port);
 });
 
-// 1.
+var bodyParser = require('body-parser');
+app.use(bodyParser.urlencoded({
+  extended: true
+}));
 
-// app.get('/hello', function (req, res) {
-//   res.send('<h1>Hello World!</h1>');
-// });
+app.set('view engine', 'pug');
 
-// 2.
+//Paths
 
-// app.get('/hello', function(request, response) {
-//   var name = request.query.name;
-//   response.end(`<h1> Hello ${name}!`);
+// /homepage
+
+// app.get('/', function(request, response) {
+//   var sort = request.query.sort;
+//   if (sort === 'top') {
+
+//   }
+//   redditAPI.getAllPosts({
+//     numPerPage: 25,
+//     page: 0
+//   }, function(err, result) {
+//     if (err) {
+//       return (err);
+//     }
+//     else {
+//       response.render('post-list', {
+//         posts: [result]
+//       });
+//     }
+//   })
 // })
 
+//  /createContent
 
-// 2b.
+app.get('/createContent', function(request, response) {
+  response.render('create-content');
+});
 
-// app.get('/hello/:nameId', function(request, response) {
-//   var name = request.params.nameId;
-//   response.end(`<h1> Hello ${name}! <h1>`);
-// })
+app.post('/createContent', function(request, response) {
+  redditAPI.createPost({
+    userId: 1,
+    title: request.body.title,
+    url: request.body.url,
+    subredditId: 1,
+  }, function(err, post) {
+    if (err) {
+      console.log('Your post was not created ' + err);
+    }
+    else {
+      response.redirect(303, `/posts/`);
+    }
+  });
+});
 
-// 3.
+// /signup
 
-// app.get('/calculator/:operation', function(request, response) {
-//   var num1 = request.query.num1;
-//   var num2 = request.query.num2;
-//   var op = request.params.operation;
-//   var answer = 0;
+app.get('/signup', function(request, response) {
+  response.render('signup');
+});
 
-//   if(op === 'add') {
-//     answer = +num1 + +num2;
-//   }
-//   else if(op === 'sub') {
-//     answer = +num1 - +num2;
-//   }
-//   else if(op === 'mult') {
-//     answer = +num1 * +num2;
-//   }
-//   else if(op === 'div') {
-//     answer = +num1 / +num2;
-//   }
-//   else {
-//     answer = 'ERROR 400 Bad Request';
-//   }
+app.post('/signup', function(request, response) {
+  redditAPI.createUser({
+    username: request.body.username,
+    password: request.body.password,
+  }, function(err, user) {
+    if (err) {
+      console.log('User not created ' + err);
+    }
+    else {
+      response.redirect(303, `/top`);
+    }
+  });
+});
 
-//   var obj = {
-//     'operator': op,
-//     'firstOperand': num1,
-//     'secondOperand': num2,
-//     'solution': answer
-//   };
+// /login
 
-//   response.end(`<h1>${JSON.stringify(obj)}</h1>`);
+// app.get('/login', function(request, response) {
+//   response.render('login'); 
 // });
 
-// 4.
+// app.post('/login', function(request, response) {
+
+// })
+
+// /posts
 
 // app.get('/posts', function(request, response) {
-//   request.query.posts = redditAPI.getAllPosts({
-//     numPerPage: 5,
+//   redditAPI.getAllPosts('controversial', {
+//     numPerPage: 25,
 //     page: 0
-//   }, function(err, resp) {
+//   }, function(err, posts) {
 //     if (err) {
 //       return err;
 //     }
 //     else {
-//       var postList = resp.map(function(currentPost) {
-//         return (`<li class="content-item">
-//         <H2>${currentPost.Post.title}</H2>
-//         <H3><a href="${currentPost.Post.url}">${currentPost.Post.url}</a></H3>
-//         <p>Created by: ${currentPost.User.username}</p>
-//         <p>Created on: ${currentPost.Post.createdAt}</p>
-//         <p>Updated on: ${currentPost.Post.updatedAt}</p>
-//         </li>`);
+//       // console.log(posts);
+//       response.render('post-list', {
+//         posts: posts
 //       });
-//       var pageStr =
-//         `<div id="contents">
-//           <h1>Post Info</h1>
-//             <ul class="contents-list">
-//                 ${postList}   
-//             </ul>
-//         </div>`;
-//       response.end(pageStr);
 //     }
 //   });
 // });
+
+// /homepage
+
+app.get('/:sort', function(request, response) {
+  redditAPI.getAllPosts(request.params.sort, {
+    numPerPage: 25,
+    page: 0,
+  }, function(err, posts) {
+    if (err) {
+      console.log(err);
+    }
+    else {
+      response.render('post-list', {
+        posts: posts
+      });
+    }
+  });
+});
+
+// /subreddits
+
+app.get('/r/:subreddit', function(request, response) {
+  redditAPI.getAllPosts(request.params.subreddit, {
+    numPerPage: 25,
+    page: 0,
+  }, function(err, posts) {
+    if (err) {
+      console.log(err);
+    }
+    else {
+      response.render('post-list', {
+        posts: posts
+      });
+    }
+  });
+})

@@ -1,0 +1,15 @@
+extends layout.pug
+block title
+  title Welcome to Reddit Clone
+block content
+  h1 Welcome to Reddit Clone
+  ul.post-list
+    each post in posts
+      li.post
+        h2
+          a(href=post.Post.url)= post.Post.title
+        p Submitted by: #{post.User.username}
+        p Score: #{post.Post.voteScore}
+        p Votes: #{post.Post.voteCount}
+        p Created: #{post.Post.createdAt}
+        p Subreddit: #{post.Subreddit.name}

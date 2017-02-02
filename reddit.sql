@@ -40,3 +40,12 @@ ALTER TABLE `posts`
 ADD `subredditId` INT(11) DEFAULT NULL,
 ADD FOREIGN KEY (`subredditId`) REFERENCES `subreddits` (`id`)
 ;
+
+CREATE TABLE `votes` (
+`voterId` INT NOT NULL,
+`postId` INT NOT NULL,
+`vote` TINYINT NOT NULL,
+PRIMARY KEY (voterId, postId),
+FOREIGN KEY (`voterId`) REFERENCES `users` (`id`),
+FOREIGN KEY (`postId`)  REFERENCES `posts` (`id`)
+);
