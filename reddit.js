@@ -1,9 +1,10 @@
 var bcrypt = require('bcrypt');
 var HASH_ROUNDS = 10;
 var secureRandom = require('secure-random');
+
 function createSessionToken() {
-      return secureRandom.randomArray(100).map(code => code.toString(36)).join('');
-    }
+  return secureRandom.randomArray(100).map(code => code.toString(36)).join('');
+}
 
 module.exports = function RedditAPI(conn) {
   return {
@@ -42,28 +43,40 @@ module.exports = function RedditAPI(conn) {
         }
       });
     },
-    createPost: function(post, callback) {
-      conn.query(
-        'INSERT INTO posts (userId, title, url, createdAt, subredditId) VALUES (?, ?, ?, ?, ?)', [post.userId, post.title, post.url, new Date(), post.subredditId],
-        function(err, result) {
-          if (err) {
-            callback(err);
-          }
-          else {
-            conn.query(
-              'SELECT id, title, url, userId, createdAt, updatedAt, subredditId FROM posts WHERE id = ?', [result.insertId],
-              function(err, result) {
-                if (err) {
-                  callback(err);
-                }
-                else {
-                  callback(null, result[0]);
-                }
-              }
-            );
-          }
+    createContent: function(post, callback) {
+      console.log('the post object is ' + post);
+      conn.query(`
+      SELECT id from subreddits where name = ?`, [post.subredditName], function(err, sub) {
+        if (err) {
+          callback(err);
         }
-      );
+        else {
+          var subreddit = JSON.stringify(sub[0].id);
+          conn.query(
+            'INSERT INTO posts (userId, title, url, createdAt, subredditId) VALUES (?, ?, ?, ?, ?)', [post.userId, post.title, post.url, new Date(), subreddit],
+            function(err, post) {
+              console.log('the modified post object is' + post);
+              if (err) {
+                callback(err);
+              }
+              else {
+                conn.query(
+                  'SELECT id, title, url, userId, createdAt, updatedAt, subredditId FROM posts WHERE id = ?', [post.insertId],
+                  function(err, result) {
+                    if (err) {
+                      callback(err);
+                    }
+                    else {
+                      callback(null, result[0]);
+                    }
+                  }
+                );
+              }
+            }
+          );
+        }
+      })
+
     },
     getAllPosts: function(subreddit, sort, options, callback) {
       if (!callback) {
@@ -73,6 +86,11 @@ module.exports = function RedditAPI(conn) {
       var limit = options.numPerPage || 25; // if options.numPerPage is "falsy" then use 25
       var offset = (options.page || 0) * limit;
       var sortBy = 'voteScore DESC, posts.createdAt DESC';
+      var sub = `WHERE subreddits.name = '${subreddit}' `;
+      
+      if(subreddit === '*') {
+      sub = '';
+      }
 
       if (sort === 'top') {
         sortBy = 'voteScore DESC';
@@ -83,9 +101,14 @@ module.exports = function RedditAPI(conn) {
       else if (sort === 'controversial') {
         sortBy = 'voteCount DESC, voteScore ASC';
       }
-
       conn.query(`
-        SELECT SUM(votes.vote) AS voteScore, COUNT(votes.vote) AS voteCount, posts.id, posts.title, posts.url, posts.createdAt, posts.updatedAt, users.id as userId, users.username, users.createdAt as usercreatedAt, users.updatedAt as userupdatedAt, subreddits.id as subredditId, subreddits.name as subredditName, subreddits.description, subreddits.createdAt as subredditcreatedAt, subreddits.updatedAt as subredditupdatedAt
+        SELECT SUM(votes.vote) AS voteScore, COUNT(votes.vote) AS voteCount, 
+        posts.id, posts.title, posts.url, posts.createdAt, posts.updatedAt, 
+        users.id as userId, users.username, users.createdAt as usercreatedAt, 
+        users.updatedAt as userupdatedAt, subreddits.id as subredditId, 
+        subreddits.name as subredditName, subreddits.description, 
+        subreddits.createdAt as subredditcreatedAt, 
+        subreddits.updatedAt as subredditupdatedAt
         FROM posts
         LEFT JOIN votes
         ON posts.id = votes.postId
@@ -93,10 +116,10 @@ module.exports = function RedditAPI(conn) {
         ON posts.userId=users.id
         LEFT JOIN subreddits 
         ON posts.subredditId = subreddits.id
-        WHERE subreddits.name = '?'
+        ${sub}
         GROUP BY posts.id
         ORDER BY ${sortBy}
-        LIMIT ? OFFSET ?`, [subreddit, limit, offset],
+        LIMIT ? OFFSET ?`, [limit, offset],
         function(err, results) {
           if (err) {
             callback(err);
@@ -275,30 +298,59 @@ module.exports = function RedditAPI(conn) {
     createOrUpdateVote: function(vote, callback) {
       var postId = vote.postId;
       var userId = vote.userId;
-      var voteDir = vote.voteDir;
-      if (voteDir !== 0 && voteDir !== 1 && voteDir !== -1) {
-        console.log("Vote did not equal 1, 0 or -1.");
-      }
-      else {
-        conn.query(`
-    INSERT INTO votes 
-    SET postId=?, voterId=?, vote=?, createdAt = NOW() 
-    ON DUPLICATE 
-    KEY UPDATE vote=?`, [postId, userId, voteDir, voteDir],
+      var voteDir = +vote.voteDir;
 
-          function(err, results) {
-            if (err) {
-              callback(err);
-            }
-            else {
-              callback(null, results);
-              return results;
-            }
-          });
-      }
+      conn.query(`
+        SELECT vote
+        FROM votes 
+        WHERE(voterId in (?) and  postId in (?))
+        `, [(+userId), (+postId)],
+        function(err, result) {
+          console.log((+voteDir) + ' ' +(+JSON.stringify(result[0].vote)));
+          if (err) {
+            console.log(err);
+          }
+          else if ((+voteDir) === (+JSON.stringify(result[0].vote))) {
+            console.log('started 0 query');
+            conn.query(`
+              UPDATE votes
+              SET vote = 0
+              WHERE(voterId in (?) and  postId in (?))
+              `, [(+userId), (+postId)],
+              function(err, results) {
+                console.log(results);
+                if (err) {
+                  callback(err);
+                }
+                else {
+                  callback(null, results);
+                  return results;
+                }
+              });
+          }
+          else {
+            conn.query(`
+              INSERT INTO votes 
+              SET postId=?, voterId=?, vote=?, createdAt = NOW() 
+              ON DUPLICATE 
+              KEY UPDATE vote=?`, [postId, userId, voteDir, voteDir],
+              function(err, results) {
+                console.log(results);
+                if (err) {
+                  callback(err);
+                }
+                else {
+                  callback(null, results);
+                  return results;
+                }
+              }
+            );
+          }
+        }
+      )
     },
     checkLogin: function(user, pass, callback) {
-      conn.query`
+      conn.query(`
       SELECT *
       FROM users
       WHERE username = ?
@@ -318,11 +370,11 @@ module.exports = function RedditAPI(conn) {
             }
           });
         }
-      };
+      });
     },
     createSession: function(userId, callback) {
       var token = createSessionToken();
-      conn.query`
+      conn.query(`
       INSERT INTO sessions
       SET userId = ?, token = ?`, [userId, token], function(err, result) {
         if (err) {
@@ -331,7 +383,21 @@ module.exports = function RedditAPI(conn) {
         else {
           callback(null, token);
         }
-      };
+      });
+    },
+    getUserFromSession: function(cookie, callback) {
+      conn.query(`
+      SELECT userId 
+      FROM sessions
+      WHERE token = ?`, [cookie+''],
+        function(err, result) {
+          if (err) {
+            callback(err);
+          }
+          else {
+            callback(null, result);
+          }
+        });
     }
   };
 };

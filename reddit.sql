@@ -49,3 +49,5 @@ PRIMARY KEY (voterId, postId),
 FOREIGN KEY (`voterId`) REFERENCES `users` (`id`),
 FOREIGN KEY (`postId`)  REFERENCES `posts` (`id`)
 );
+
+CREATE TABLE sessions (token VARCHAR(255), userId INT, PRIMARY KEY(token), FOREIGN KEY(userId) REFERENCES users(id));

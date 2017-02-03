@@ -11,5 +11,15 @@ block content
         p Submitted by: #{post.User.username}
         p Score: #{post.Post.voteScore}
         p Votes: #{post.Post.voteCount}
+        <form action="/vote" method="post">
+          <input type="hidden" name="vote" value="1">
+          <input type="hidden" name="postId" value=#{post.Post.id}>
+        <button type="submit">upvote this</button>
+        </form>
+        <form action="/vote" method="post">
+          <input type="hidden" name="vote" value="-1">
+          <input type="hidden" name="postId" value= #{post.Post.id}>
+          <button type="submit">downvote this</button>
+        </form>
         p Created: #{post.Post.createdAt}
         p Subreddit: #{post.Subreddit.name}
