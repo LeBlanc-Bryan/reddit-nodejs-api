@@ -1,14 +1,13 @@
 extends layout.pug
 block title
-  title Welcome to Reddit Clone - #{username}
+  title Posts by: #{username}
 block content
-  h1 Welcome to Reddit Clone - #{username}
+  h1 Posts by: #{username}
   ul.post-list
     each post in posts
       li.post
         h2
           a(href=post.Post.url)= post.Post.title
-        p Submitted by: #{post.User.username}
         p Score: #{post.Post.voteScore}
         p Votes: #{post.Post.voteCount}
         <form action="/vote" method="post">
@@ -32,4 +31,4 @@ block content
         inputs[currentElement].value = document.location.href
         }
     }
-               
+            

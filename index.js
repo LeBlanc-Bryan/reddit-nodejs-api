@@ -34,19 +34,19 @@ var server = app.listen(process.env.PORT, process.env.IP, function() {
 // Check cookie
 
 function checkLoginToken(request, response, next) {
-  if(request.cookies.SESSION) {
+  if (request.cookies.SESSION) {
     redditAPI.getUserFromSession(request.cookies.SESSION, function(err, user) {
-      if(err) {
+      if (err) {
         console.log(err);
       }
-      if(user) {
+      if (user) {
         request.loggedInUser = JSON.stringify(user[0].userId);
         console.log('the logged in user is ' + request.loggedInUser);
       }
       next();
     });
   }
-  else{
+  else {
     next();
   }
 }
@@ -76,7 +76,7 @@ app.post('/signup', function(request, response) {
 // /login
 
 app.get('/login', function(request, response) {
-  response.render('login'); 
+  response.render('login');
 });
 
 app.post('/login', function(request, response) {
@@ -84,7 +84,7 @@ app.post('/login', function(request, response) {
     if (err) {
       response.status(401).send(err.message);
     }
-    else (
+    else(
       redditAPI.createSession(user.id, function(err, token) {
         if (err) {
           response.status(500).send('an error occured. please try again later!');
@@ -96,50 +96,121 @@ app.post('/login', function(request, response) {
       }));
   });
 });
-  
+
 
 // /homepage sort by >>> /?sort='' >>> remove injection vulnerability
 
 app.get('/', function(request, response) {
   var sort = request.query.sort;
-  if(!sort) {
+  if (!sort) {
     sort = 'hot';
   }
-  redditAPI.getAllPosts('*', request.query.sort, {
-    numPerPage: 25,
-    page: 0,
-  }, function(err, posts) {
+  if(request.loggedInUser){
+    redditAPI.getUsername(request.loggedInUser, function(err, username) {
     if (err) {
       console.log(err);
     }
     else {
-      response.render('post-list', {
-        posts: posts
+      if (!request.loggedInUser) {
+        var user = 'please login';
+      }
+      else{
+        var user = username[0].username;
+      }
+        redditAPI.getAllPosts('*', request.query.sort, {
+        numPerPage: 25,
+        page: 0,
+      }, function(err, posts) {
+
+        if (err) {
+          console.log(err);
+        }
+        else {
+          response.render('post-list', {
+            posts: posts,
+            username: user,
+          });
+        }
       });
     }
   });
+  }
+  else {
+      redditAPI.getAllPosts('*', request.query.sort, {
+        numPerPage: 25,
+        page: 0,
+      }, function(err, posts) {
+      var user = 'please login';
+        if (err) {
+          console.log(err);
+        }
+        else {
+          response.render('post-list', {
+            posts: posts,
+            username: user,
+          });
+        }
+      });
+  }
 });
 
 // /subreddit sort by >>> /?sort=''
 
-app.get('/r/:subreddit', function(request, response) {
-  var sort = request.query.sort;
-  if(!sort) {
+ app.get('/r/:subreddit', function(request, response) {
+ var sort = request.query.sort;
+  if (!sort) {
     sort = 'hot';
   }
-  redditAPI.getAllPosts(request.params.subreddit, sort ,{
-    numPerPage: 25,
-    page: 0,
-  }, function(err, posts) {
+  if(request.loggedInUser){
+    redditAPI.getUsername(request.loggedInUser, function(err, username) {
     if (err) {
       console.log(err);
     }
     else {
-      response.render('post-list', {
-        posts: posts
+      if (!request.loggedInUser) {
+        var user =  'please login';
+      }
+      else{
+        var user = username[0].username;
+      }
+        redditAPI.getAllPosts(request.params.subreddit, request.query.sort, {
+        numPerPage: 25,
+        page: 0,
+      }, function(err, posts) {
+          var subreddit = (posts[0].Subreddit.name);
+        if (err) {
+          console.log(err);
+        }
+        else {
+          response.render('subreddit', {
+            subreddit: subreddit,
+            posts: posts,
+            username: user,
+          });
+        }
       });
     }
   });
+  }
+  else {
+      redditAPI.getAllPosts(request.params.subreddit, request.query.sort, {
+        numPerPage: 25,
+        page: 0,
+      }, function(err, posts) {
+        var subreddit = (posts[0].Subreddit.name);
+        var user = 'please login';
+        if (err) {
+          console.log(err);
+        }
+        else {
+          response.render('subreddit', {
+            subreddit: subreddit,
+            posts: posts,
+            username: user,
+          });
+        }
+      });
+  }
 });
 
 // /createContent >> add redirect to post page!
@@ -149,53 +220,72 @@ app.get('/createContent', function(request, response) {
 });
 
 app.post('/createContent', function(request, response) {
-    if(!request.loggedInUser) {
-      response.status(401).send('You must be logged in to create content!');
-    }  
-    else {
-redditAPI.createContent({
-    userId: request.loggedInUser,
-    title: request.body.title,
-    url: request.body.url,
-    subredditName: request.body.subreddit,
-  }, function(err, post) {
-    if (err) {
-      console.log('Your post was not created ' + err);
-    }
-    else {
-      response.redirect(303, `/r/${request.body.subreddit}`);
-    }
-  });
-}}
-);
+  if (!request.loggedInUser) {
+    response.status(401).send('You must be logged in to create content!');
+  }
+  else {
+    redditAPI.createContent({
+      userId: request.loggedInUser,
+      title: request.body.title,
+      url: request.body.url,
+      subredditName: request.body.subreddit,
+    }, function(err, post) {
+      if (err) {
+        console.log('Your post was not created ' + err);
+      }
+      else {
+        response.redirect(303, `/r/${request.body.subreddit}`);
+      }
+    });
+  }
+});
 
 // /user
 
-//nothing here yet
+app.get('/u/:user', function(request, response) {
+  var sort = request.query.sort;
+  if (!sort) {
+    sort = 'hot';
+  }
+  redditAPI.getAllPostsForUser(request.params.user, sort, {
+    numPerPage: 25,
+    page: 0,
+  }, function(err, posts) {
+    var username = (posts[0].User.username);
+    if (err) {
+      console.log(err);
+    }
+    else {
+      response.render('user-posts', {
+        posts: posts,
+        username: username
+      });
+    }
+  });
+});
 
 app.post('/vote', function(request, response) {
-  if(!request.loggedInUser) {
-      response.status(401).send('You must be logged in to vote!');
-    }  
-    else {
-        console.log('vote check for userid = ' + request.loggedInUser);
-  redditAPI.createOrUpdateVote({
-      userId: request.loggedInUser,
-      postId: request.body.postId,
-      voteDir: request.body.vote,
-    },
+  if (!request.loggedInUser) {
+    response.status(401).send('You must be logged in to vote!');
+  }
+  else {
+    console.log('vote check for userid = ' + request.loggedInUser);
+    redditAPI.createOrUpdateVote({
+        userId: request.loggedInUser,
+        postId: request.body.postId,
+        voteDir: request.body.vote,
+      },
       function(err, results) {
-        if(err) {
+        if (err) {
           console.log("Vote not cast " + err);
         }
-        else{
-          response.redirect('/');
+        else {
+          response.redirect(request.body.url);
         }
       }
     );
-  }}
-);
-
+  }
+});
 
 
 // /posts >>> old code

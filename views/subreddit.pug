@@ -1,8 +1,8 @@
 extends layout.pug
 block title
-  title Welcome to Reddit Clone - #{username}
+  title Welcome to /r/#{subreddit} - #{username} 
 block content
-  h1 Welcome to Reddit Clone - #{username}
+  h1 Welcome to /r/#{subreddit} - #{username}
   ul.post-list
     each post in posts
       li.post

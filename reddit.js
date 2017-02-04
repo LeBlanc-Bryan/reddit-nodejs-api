@@ -155,59 +155,75 @@ module.exports = function RedditAPI(conn) {
         }
       );
     },
-    getAllPostsForUser: function(userId, options, callback) {
-      // In case we are called without an options parameter, shift all the parameters manually
+    getAllPostsForUser: function(user, sort, options, callback) {
       if (!callback) {
         callback = options;
         options = {};
       }
       var limit = options.numPerPage || 25; // if options.numPerPage is "falsy" then use 25
       var offset = (options.page || 0) * limit;
-      var user = userId;
+      var sortBy = 'voteScore DESC, posts.createdAt DESC';
+      var user = `WHERE users.username = '${user}' `;
+
+      if (sort === 'top') {
+        sortBy = 'voteScore DESC';
+      }
+      else if (sort === 'new') {
+        sortBy = 'posts.createdAt DESC';
+      }
+      else if (sort === 'controversial') {
+        sortBy = 'voteCount DESC, voteScore ASC';
+      }
       conn.query(`
-        SELECT SUM(votes.vote) AS voteScore, COUNT(votes.vote) AS voteCount, posts.id, posts.title, posts.url, posts.createdAt, posts.updatedAt, users.id as userId, users.username, users.createdAt as usercreatedAt, users.updatedAt as userupdatedAt, subreddits.id as subredditId, subreddits.name as subredditName, subreddits.description, subreddits.createdAt as subredditcreatedAt, subreddits.updatedAt as subredditupdatedAt
+        SELECT SUM(votes.vote) AS voteScore, COUNT(votes.vote) AS voteCount, 
+        posts.id, posts.title, posts.url, posts.createdAt, posts.updatedAt, 
+        users.id as userId, users.username, users.createdAt as usercreatedAt, 
+        users.updatedAt as userupdatedAt, subreddits.id as subredditId, 
+        subreddits.name as subredditName, subreddits.description, 
+        subreddits.createdAt as subredditcreatedAt, 
+        subreddits.updatedAt as subredditupdatedAt
         FROM posts
-        JOIN votes
-        ON votes.postId = posts.id 
-        JOIN users
+        LEFT JOIN votes
+        ON posts.id = votes.postId
+        LEFT JOIN users
         ON posts.userId=users.id
-        JOIN subreddits 
+        LEFT JOIN subreddits 
         ON posts.subredditId = subreddits.id
-        WHERE posts.userId = ?
-        ORDER BY posts.createdAt DESC
-        LIMIT ? OFFSET ?`, [user, limit, offset],
+        ${user}
+        GROUP BY posts.id
+        ORDER BY ${sortBy}
+        LIMIT ? OFFSET ?`, [limit, offset],
         function(err, results) {
           if (err) {
             callback(err);
           }
           else {
-            callback(null,
-              results.map(function(res, index, array) {
-                return {
-                  User: {
-                    id: res.userId,
-                    username: res.username,
-                    createdAt: res.usercreatedAt,
-                    updatedAt: res.userupdatedAt,
-                  },
-                  Subreddit: {
-                    id: res.subredditId,
-                    name: res.subredditName,
-                    description: res.description,
-                    createdAt: res.subredditcreatedAt,
-                    updatedAt: res.subredditcreatedAt,
-                  },
-                  Post: {
-                    id: res.id,
-                    title: res.title,
-                    url: res.url,
-                    createdAt: res.createdAt,
-                    updatedAt: res.updatedAt,
-                    voteScore: res.voteScore,
-                    voteCount: res.voteCount,
-                  }
-                };
-              }));
+            callback(null, results.map(function(res) {
+              return {
+                User: {
+                  id: res.userId,
+                  username: res.username,
+                  createdAt: res.usercreatedAt,
+                  updatedAt: res.userupdatedAt,
+                },
+                Subreddit: {
+                  id: res.subredditId,
+                  name: res.subredditName,
+                  description: res.description,
+                  createdAt: res.subredditcreatedAt,
+                  updatedAt: res.subredditcreatedAt,
+                },
+                Post: {
+                  id: res.id,
+                  title: res.title,
+                  url: res.url,
+                  createdAt: res.createdAt,
+                  updatedAt: res.updatedAt,
+                  voteScore: res.voteScore,
+                  voteCount: res.voteCount,
+                }
+              };
+            }));
           }
         }
       );
@@ -398,6 +414,20 @@ module.exports = function RedditAPI(conn) {
             callback(null, result);
           }
         });
+    },
+    getUsername: function(userId, callback) {
+      conn.query(`
+      SELECT username
+      FROM users
+      WHERE id = ?`, [+userId],
+      function(err, result) {
+        if(err) {
+          callback(err);
+        }
+        else {
+          callback(null, result);
+        }
+      });
     }
   };
 };
