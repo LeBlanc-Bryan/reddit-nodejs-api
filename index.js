@@ -249,8 +249,9 @@ app.get('/u/:user', function(request, response) {
   }
   redditAPI.getAllPostsForUser(request.params.user, sort, {
     numPerPage: 25,
-    page: 0,
+    page: 0
   }, function(err, posts) {
+    console.log(posts);
     var username = (posts[0].User.username);
     if (err) {
       console.log(err);

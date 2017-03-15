@@ -163,7 +163,9 @@ module.exports = function RedditAPI(conn) {
       var limit = options.numPerPage || 25; // if options.numPerPage is "falsy" then use 25
       var offset = (options.page || 0) * limit;
       var sortBy = 'voteScore DESC, posts.createdAt DESC';
-      var user = `WHERE users.username = '${user}' `;
+      var username = `WHERE users.username = '${user}' `;
+      console.log('the username is ' + username);
+      console.log('the user is ' +user)
 
       if (sort === 'top') {
         sortBy = 'voteScore DESC';
@@ -189,7 +191,7 @@ module.exports = function RedditAPI(conn) {
         ON posts.userId=users.id
         LEFT JOIN subreddits 
         ON posts.subredditId = subreddits.id
-        ${user}
+        ${username}
         GROUP BY posts.id
         ORDER BY ${sortBy}
         LIMIT ? OFFSET ?`, [limit, offset],
@@ -315,13 +317,14 @@ module.exports = function RedditAPI(conn) {
       var postId = vote.postId;
       var userId = vote.userId;
       var voteDir = +vote.voteDir;
-
+      console.log(userId + ' ' + postId)
       conn.query(`
         SELECT vote
         FROM votes 
         WHERE(voterId in (?) and  postId in (?))
         `, [(+userId), (+postId)],
         function(err, result) {
+          console.log(result);
           console.log((+voteDir) + ' ' +(+JSON.stringify(result[0].vote)));
           if (err) {
             console.log(err);
